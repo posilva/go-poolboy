@@ -3,6 +3,7 @@ package pool
 import (
 	"context"
 	"errors"
+	"github.com/fortytw2/leaktest"
 	"github.com/stretchr/testify/assert"
 	"sync"
 	"testing"
@@ -10,6 +11,7 @@ import (
 )
 
 func TestPoolCheckoutWithTimeout(t *testing.T) {
+	defer leaktest.Check(t)()
 	p, err := NewPoolWithInit(func() (interface{}, error) {
 		return nil, nil
 	}, 1)
@@ -30,6 +32,7 @@ func TestPoolCheckoutWithTimeout(t *testing.T) {
 	assert.Error(t, err, "failed to checkout")
 }
 func TestPoolInitWithError(t *testing.T) {
+	defer leaktest.Check(t)()
 	p, e := NewPoolWithInit(func() (interface{}, error) {
 		return nil, errors.New("err")
 	}, 10)
@@ -39,10 +42,12 @@ func TestPoolInitWithError(t *testing.T) {
 }
 
 func TestPoolSimple(t *testing.T) {
+	defer leaktest.Check(t)()
 	p, err := NewPoolWithInit(func() (interface{}, error) {
 		return nil, nil
 	}, 10)
 	assert.Nil(t, err, "no init error should be returned")
+	defer p.Cancel()
 	var wg sync.WaitGroup
 	wg.Add(10)
 	for index := 0; index < 10; index++ {
@@ -59,13 +64,15 @@ func TestPoolSimple(t *testing.T) {
 }
 
 func TestPoolMoreWorkThanWorkers(t *testing.T) {
+	defer leaktest.Check(t)()
 	p, err := NewPoolWithInit(func() (interface{}, error) {
 		return nil, nil
-	}, 10)
+	}, 1)
 	assert.Nil(t, err, "no init error should be returned")
+	defer p.Cancel()
 	var wg sync.WaitGroup
-	wg.Add(100)
-	for index := 0; index < 100; index++ {
+	wg.Add(10)
+	for index := 0; index < 10; index++ {
 		go func() {
 			defer wg.Done()
 			r, e := p.Execute(func(interface{}) (interface{}, error) {
@@ -79,10 +86,12 @@ func TestPoolMoreWorkThanWorkers(t *testing.T) {
 }
 
 func TestPoolMoreWorkThanWorkersWithTimeouts(t *testing.T) {
+	defer leaktest.Check(t)()
 	p, err := NewPoolWithInit(func() (interface{}, error) {
 		return nil, nil
-	}, 10)
+	}, 1)
 	assert.Nil(t, err, "no init error should be returned")
+	defer p.Cancel()
 	var wg sync.WaitGroup
 	wg.Add(5)
 	for index := 0; index < 5; index++ {

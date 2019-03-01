@@ -2,7 +2,6 @@ package pool
 
 import (
 	"context"
-	"fmt"
 	"math"
 	"time"
 )
@@ -61,7 +60,9 @@ func (p *Pool) checkout(ctx context.Context) (*worker, error) {
 
 // Checkin releases the worker back to pool
 func (p *Pool) checkin(w *worker) {
-	p.available <- w
+	if !w.canceled {
+		p.available <- w
+	}
 }
 
 // Execute encapsulates a Checkout, Do, CheckIn
@@ -82,6 +83,5 @@ func (p *Pool) Execute(fn WorkFun, timeout uint64) (interface{}, error) {
 
 // Cancel the workers in the pool
 func (p *Pool) Cancel() {
-	fmt.Println("cancel this pool")
 	close(p.cancel)
 }

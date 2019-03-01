@@ -98,7 +98,6 @@ func TestSpawnWorkerWithError(t *testing.T) {
 	assert.Nil(t, r, "no result to return")
 	//assert.Equal(t, e.Error(), "err", "error message should be equal")
 }
-
 func TestSpawnWorkerWithPanic(t *testing.T) {
 	c := make(chan struct{})
 	w := newWorker(func() (interface{}, error) {
@@ -118,4 +117,60 @@ func TestSpawnWorkerWithPanic(t *testing.T) {
 	assert.NotNil(t, e, "error should be returned")
 	assert.Nil(t, r, "no result to return")
 	assert.EqualError(t, e, "panic", "error message should be equal")
+}
+
+func TestSpawnWorkerWithWorkCanceled(t *testing.T) {
+	c := make(chan struct{})
+	w := newWorker(func() (interface{}, error) {
+		return nil, nil
+	}, c)
+	w.init()
+
+	work := func(interface{}) (interface{}, error) {
+		close(c)
+		time.Sleep(2 * time.Second)
+		return "ok", nil
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
+
+	r, e := w.do(ctx, work)
+
+	assert.NotNil(t, e, "error should be returned")
+	assert.Nil(t, r, "no result to return")
+	assert.EqualError(t, e, ErrorCanceled.Error(), "error message should be equal")
+}
+func TestSpawnWorkerWithoutWorkCanceled(t *testing.T) {
+	c := make(chan struct{})
+	w := newWorker(func() (interface{}, error) {
+		return nil, nil
+	}, c)
+	w.init()
+	time.Sleep(1 * time.Second)
+	close(c)
+	time.Sleep(2 * time.Second)
+	assert.Equal(t, true, w.canceled, "worker should be canceled")
+}
+func TestSpawnWorkerToMuchWorkCanceled(t *testing.T) {
+	c := make(chan struct{})
+	w := newWorker(func() (interface{}, error) {
+		return nil, nil
+	}, c)
+	w.init()
+
+	work := func(interface{}) (interface{}, error) {
+		time.Sleep(5 * time.Second)
+		return "ok", nil
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
+	go w.do(ctx, work)
+	// the in worker channel only have place for 1 message this will block and trigger the cancel
+	// this will block when trying to push more work
+	w.do(ctx, work)
+	close(c)
+	time.Sleep(2 * time.Second)
+	assert.Equal(t, true, w.canceled, "worker should be canceled")
 }

@@ -26,8 +26,8 @@ type worker struct {
 	out       chan interface{} // to return work results
 	err       chan interface{} // to return errors
 	cancel    <-chan struct{}  // allow to receive cancel
+	canceled  bool             // this worker was canceled
 	timeout   chan bool        // notify timeouts
-	exit      chan bool        // notify that we are exiting
 	initFn    InitFun          // the function that enable to start the work
 	initiated bool             // flag to mark that worker was initiated
 }
@@ -39,7 +39,6 @@ func newWorker(fn InitFun, cancel <-chan struct{}) *worker {
 		out:       make(chan interface{}),
 		err:       make(chan interface{}, 1),
 		cancel:    cancel,
-		exit:      make(chan bool),
 		timeout:   make(chan bool, 1),
 		initFn:    fn,
 		initiated: false,
@@ -59,16 +58,11 @@ func (w *worker) init() error {
 
 func (w *worker) start() {
 	for {
-
 		select {
-		case <-w.exit:
-			fmt.Println("exiting from run")
-			return
 		case <-w.cancel:
-			fmt.Println("cancel was called when in run")
 			return
 		default:
-			if !w.run() {
+			if !w.run() || w.canceled {
 				return
 			}
 		}
@@ -82,8 +76,8 @@ func (w *worker) run() bool {
 		}
 	}()
 	select {
-	case <-w.exit:
-		fmt.Println("exiting from inside run")
+	case <-w.cancel:
+		w.canceled = true
 		return false
 	case workfn := <-w.in:
 		r, err := workfn(w.state)
@@ -105,11 +99,15 @@ func (w *worker) do(ctx context.Context, work WorkFun) (interface{}, error) {
 	if !w.initiated {
 		panic("worker was not initiated")
 	}
-	w.in <- work
+	select {
+	case w.in <- work:
+	case <-w.cancel:
+		w.canceled = true
+		return nil, ErrorCanceled
+	}
 	select {
 	case <-w.cancel:
-		fmt.Println("canceled from inside do")
-		w.exit <- true
+		w.canceled = true
 		return nil, ErrorCanceled
 	case result := <-w.out:
 		return result, nil
