@@ -2,12 +2,14 @@ package pool
 
 import (
 	"context"
+	"fmt"
 	"math"
 	"time"
 )
 
 // Pool defines the data to manage a pool of workers
 type Pool struct {
+	cancel    chan struct{}
 	size      int
 	available chan *worker
 	initiated bool
@@ -18,6 +20,7 @@ func NewPool(sz int) *Pool {
 	pool := &Pool{
 		size:      sz,
 		available: make(chan *worker, sz),
+		cancel:    make(chan struct{}, 1),
 		initiated: false,
 	}
 	return pool
@@ -36,7 +39,7 @@ func NewPoolWithInit(fn InitFun, sz int) (*Pool, error) {
 // Init the pool of workers
 func (p *Pool) Init(fn InitFun) error {
 	for index := 0; index < p.size; index++ {
-		w := newWorker(fn)
+		w := newWorker(fn, p.cancel)
 		err := w.init()
 		if err != nil {
 			return err
@@ -75,4 +78,10 @@ func (p *Pool) Execute(fn WorkFun, timeout uint64) (interface{}, error) {
 	}
 	defer p.checkin(w)
 	return w.do(ctx, fn)
+}
+
+// Cancel the workers in the pool
+func (p *Pool) Cancel() {
+	fmt.Println("cancel this pool")
+	close(p.cancel)
 }

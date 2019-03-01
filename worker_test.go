@@ -11,9 +11,11 @@ import (
 )
 
 func TestSpawnWorkerOK(t *testing.T) {
+	c := make(chan struct{})
 	w := newWorker(func() (interface{}, error) {
 		return nil, nil
-	})
+	}, c)
+
 	w.init()
 
 	work := func(interface{}) (interface{}, error) {
@@ -30,9 +32,11 @@ func TestSpawnWorkerOK(t *testing.T) {
 }
 
 func TestSpawnWorkerWithTimeout(t *testing.T) {
+	c := make(chan struct{})
 	w := newWorker(func() (interface{}, error) {
 		return nil, nil
-	})
+	}, c)
+
 	w.init()
 
 	work := func(interface{}) (interface{}, error) {
@@ -50,9 +54,11 @@ func TestSpawnWorkerWithTimeout(t *testing.T) {
 	assert.EqualError(t, e, ErrorTimeout.Error(), "timeout error should be returned")
 }
 func TestSpawnWorkerNotInitiated(t *testing.T) {
+	c := make(chan struct{})
 	w := newWorker(func() (interface{}, error) {
 		return nil, nil
-	})
+	}, c)
+
 	work := func(interface{}) (interface{}, error) {
 		e0 := errors.New("err")
 		return nil, e0
@@ -70,9 +76,11 @@ func TestSpawnWorkerNotInitiated(t *testing.T) {
 
 }
 func TestSpawnWorkerWithError(t *testing.T) {
+	c := make(chan struct{})
 	w := newWorker(func() (interface{}, error) {
 		return nil, nil
-	})
+	}, c)
+
 	w.init()
 	work := func(interface{}) (interface{}, error) {
 		e0 := errors.New("err")
@@ -92,10 +100,12 @@ func TestSpawnWorkerWithError(t *testing.T) {
 }
 
 func TestSpawnWorkerWithPanic(t *testing.T) {
+	c := make(chan struct{})
 	w := newWorker(func() (interface{}, error) {
 		return nil, nil
-	})
+	}, c)
 	w.init()
+
 	work := func(interface{}) (interface{}, error) {
 		panic("panic")
 	}

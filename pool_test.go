@@ -17,6 +17,8 @@ func TestPoolCheckoutWithTimeout(t *testing.T) {
 		t.Logf("new pool failed to be created %v", err)
 		t.Fail()
 	}
+	defer p.Cancel()
+
 	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
 	defer cancel()
 	_, err = p.checkout(ctx)
