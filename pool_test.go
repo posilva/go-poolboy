@@ -13,16 +13,19 @@ func TestPoolCheckoutWithTimeout(t *testing.T) {
 	p, err := NewPoolWithInit(func() (interface{}, error) {
 		return nil, nil
 	}, 1)
+	if err != nil {
+		t.Logf("new pool failed to be created %v", err)
+		t.Fail()
+	}
 	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
 	defer cancel()
 	_, err = p.checkout(ctx)
+	assert.NoError(t, err, "cannot failed 1st checkout")
 
 	ctx1, cancel1 := context.WithTimeout(context.Background(), 1*time.Second)
 	defer cancel1()
 	_, err = p.checkout(ctx1)
-
 	assert.Error(t, err, "failed to checkout")
-
 }
 func TestPoolInitWithError(t *testing.T) {
 	p, e := NewPoolWithInit(func() (interface{}, error) {
