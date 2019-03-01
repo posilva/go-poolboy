@@ -3,6 +3,7 @@ package pool
 import (
 	"context"
 	"errors"
+	"github.com/fortytw2/leaktest"
 	"github.com/stretchr/testify/assert"
 	"sync"
 	"testing"
@@ -10,6 +11,7 @@ import (
 )
 
 func TestPoolCheckoutWithTimeout(t *testing.T) {
+	defer leaktest.Check(t)()
 	p, err := NewPoolWithInit(func() (interface{}, error) {
 		return nil, nil
 	}, 1)
@@ -17,6 +19,8 @@ func TestPoolCheckoutWithTimeout(t *testing.T) {
 		t.Logf("new pool failed to be created %v", err)
 		t.Fail()
 	}
+	defer p.Cancel()
+
 	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
 	defer cancel()
 	_, err = p.checkout(ctx)
@@ -28,6 +32,7 @@ func TestPoolCheckoutWithTimeout(t *testing.T) {
 	assert.Error(t, err, "failed to checkout")
 }
 func TestPoolInitWithError(t *testing.T) {
+	defer leaktest.Check(t)()
 	p, e := NewPoolWithInit(func() (interface{}, error) {
 		return nil, errors.New("err")
 	}, 10)
@@ -37,16 +42,18 @@ func TestPoolInitWithError(t *testing.T) {
 }
 
 func TestPoolSimple(t *testing.T) {
+	defer leaktest.Check(t)()
 	p, err := NewPoolWithInit(func() (interface{}, error) {
 		return nil, nil
 	}, 10)
 	assert.Nil(t, err, "no init error should be returned")
+	defer p.Cancel()
 	var wg sync.WaitGroup
 	wg.Add(10)
 	for index := 0; index < 10; index++ {
 		go func() {
 			defer wg.Done()
-			r, e := p.Execute(func(*Worker) (interface{}, error) {
+			r, e := p.Execute(func(interface{}) (interface{}, error) {
 				return "ok", nil
 			}, 5000)
 			assert.Nil(t, e, "no error should be returned")
@@ -57,16 +64,18 @@ func TestPoolSimple(t *testing.T) {
 }
 
 func TestPoolMoreWorkThanWorkers(t *testing.T) {
+	defer leaktest.Check(t)()
 	p, err := NewPoolWithInit(func() (interface{}, error) {
 		return nil, nil
-	}, 10)
+	}, 1)
 	assert.Nil(t, err, "no init error should be returned")
+	defer p.Cancel()
 	var wg sync.WaitGroup
-	wg.Add(100)
-	for index := 0; index < 100; index++ {
+	wg.Add(10)
+	for index := 0; index < 10; index++ {
 		go func() {
 			defer wg.Done()
-			r, e := p.Execute(func(*Worker) (interface{}, error) {
+			r, e := p.Execute(func(interface{}) (interface{}, error) {
 				return "ok", nil
 			}, 5000)
 			assert.Nil(t, e, "no error should be returned")
@@ -77,16 +86,18 @@ func TestPoolMoreWorkThanWorkers(t *testing.T) {
 }
 
 func TestPoolMoreWorkThanWorkersWithTimeouts(t *testing.T) {
+	defer leaktest.Check(t)()
 	p, err := NewPoolWithInit(func() (interface{}, error) {
 		return nil, nil
-	}, 10)
+	}, 1)
 	assert.Nil(t, err, "no init error should be returned")
+	defer p.Cancel()
 	var wg sync.WaitGroup
 	wg.Add(5)
 	for index := 0; index < 5; index++ {
 		go func() {
 			defer wg.Done()
-			r, e := p.Execute(func(*Worker) (interface{}, error) {
+			r, e := p.Execute(func(interface{}) (interface{}, error) {
 				time.Sleep(2 * time.Second)
 				return "ok", nil
 			}, 1000)

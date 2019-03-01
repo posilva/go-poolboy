@@ -29,9 +29,9 @@ func main() {
 		panic(fmt.Errorf("failed to create the pool: %v", err))
 	}
 
-	result, err := pool.Execute(func(w *poolboy.Worker) (interface{}, error) {
+	result, err := pool.Execute(func(s interface{}) (interface{}, error) {
 		// get the state
-		state := w.State.(string)
+		state := s.(string)
 		// do something with state and return
 		return strings.ToUpper(state), nil
 

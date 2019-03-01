@@ -8,8 +8,9 @@ import (
 
 // Pool defines the data to manage a pool of workers
 type Pool struct {
+	cancel    chan struct{}
 	size      int
-	available chan *Worker
+	available chan *worker
 	initiated bool
 }
 
@@ -17,7 +18,8 @@ type Pool struct {
 func NewPool(sz int) *Pool {
 	pool := &Pool{
 		size:      sz,
-		available: make(chan *Worker, sz),
+		available: make(chan *worker, sz),
+		cancel:    make(chan struct{}, 1),
 		initiated: false,
 	}
 	return pool
@@ -36,7 +38,7 @@ func NewPoolWithInit(fn InitFun, sz int) (*Pool, error) {
 // Init the pool of workers
 func (p *Pool) Init(fn InitFun) error {
 	for index := 0; index < p.size; index++ {
-		w := NewWorker(fn)
+		w := newWorker(fn, p.cancel)
 		err := w.init()
 		if err != nil {
 			return err
@@ -47,7 +49,7 @@ func (p *Pool) Init(fn InitFun) error {
 }
 
 // Checkout recruits a worker to do a task
-func (p *Pool) checkout(ctx context.Context) (*Worker, error) {
+func (p *Pool) checkout(ctx context.Context) (*worker, error) {
 	select {
 	case w := <-p.available:
 		return w, nil
@@ -57,8 +59,10 @@ func (p *Pool) checkout(ctx context.Context) (*Worker, error) {
 }
 
 // Checkin releases the worker back to pool
-func (p *Pool) checkin(w *Worker) {
-	p.available <- w
+func (p *Pool) checkin(w *worker) {
+	if !w.canceled {
+		p.available <- w
+	}
 }
 
 // Execute encapsulates a Checkout, Do, CheckIn
@@ -75,4 +79,9 @@ func (p *Pool) Execute(fn WorkFun, timeout uint64) (interface{}, error) {
 	}
 	defer p.checkin(w)
 	return w.do(ctx, fn)
+}
+
+// Cancel the workers in the pool
+func (p *Pool) Cancel() {
+	close(p.cancel)
 }
