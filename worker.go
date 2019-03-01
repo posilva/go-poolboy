@@ -15,11 +15,11 @@ var (
 type InitFun func() (interface{}, error)
 
 //WorkFun represents a unit of work to execute by the worker
-type WorkFun func(*Worker) (interface{}, error)
+type WorkFun func(interface{}) (interface{}, error)
 
-// Worker represents a worker enable to execute
-type Worker struct {
-	State     interface{}      // save the state to be used later
+// worker represents a worker enable to execute
+type worker struct {
+	state     interface{}      // save the state to be used later
 	in        chan WorkFun     // to receive work
 	out       chan interface{} // to return work results
 	err       chan interface{} // to return errors
@@ -28,9 +28,9 @@ type Worker struct {
 	initiated bool             // flag to mark that worker was initiated
 }
 
-// NewWorker creates a worker
-func NewWorker(fn InitFun) *Worker {
-	return &Worker{
+// newWorker creates a worker
+func newWorker(fn InitFun) *worker {
+	return &worker{
 		in:        make(chan WorkFun),
 		out:       make(chan interface{}),
 		err:       make(chan interface{}, 1),
@@ -40,24 +40,24 @@ func NewWorker(fn InitFun) *Worker {
 	}
 }
 
-func (w *Worker) init() error {
+func (w *worker) init() error {
 	s, err := w.initFn()
 	if err != nil {
 		return err
 	}
-	w.State = s
+	w.state = s
 	go w.start()
 	w.initiated = true
 	return nil
 }
 
-func (w *Worker) start() {
+func (w *worker) start() {
 	for {
 		w.run()
 	}
 }
 
-func (w *Worker) run() {
+func (w *worker) run() {
 	defer func() {
 		if r := recover(); r != nil {
 			w.err <- r
@@ -65,7 +65,7 @@ func (w *Worker) run() {
 	}()
 	select {
 	case workfn := <-w.in:
-		r, err := workfn(w)
+		r, err := workfn(w.state)
 		if err != nil {
 			w.err <- err
 			return
@@ -79,7 +79,7 @@ func (w *Worker) run() {
 	}
 }
 
-func (w *Worker) do(ctx context.Context, work WorkFun) (interface{}, error) {
+func (w *worker) do(ctx context.Context, work WorkFun) (interface{}, error) {
 	if !w.initiated {
 		panic("worker was not initiated")
 	}

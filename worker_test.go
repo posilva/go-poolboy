@@ -11,12 +11,12 @@ import (
 )
 
 func TestSpawnWorkerOK(t *testing.T) {
-	w := NewWorker(func() (interface{}, error) {
+	w := newWorker(func() (interface{}, error) {
 		return nil, nil
 	})
 	w.init()
 
-	work := func(*Worker) (interface{}, error) {
+	work := func(interface{}) (interface{}, error) {
 		return "ok", nil
 	}
 
@@ -30,12 +30,12 @@ func TestSpawnWorkerOK(t *testing.T) {
 }
 
 func TestSpawnWorkerWithTimeout(t *testing.T) {
-	w := NewWorker(func() (interface{}, error) {
+	w := newWorker(func() (interface{}, error) {
 		return nil, nil
 	})
 	w.init()
 
-	work := func(*Worker) (interface{}, error) {
+	work := func(interface{}) (interface{}, error) {
 		time.Sleep(2 * time.Second)
 		return "ok", nil
 	}
@@ -50,10 +50,10 @@ func TestSpawnWorkerWithTimeout(t *testing.T) {
 	assert.EqualError(t, e, ErrorTimeout.Error(), "timeout error should be returned")
 }
 func TestSpawnWorkerNotInitiated(t *testing.T) {
-	w := NewWorker(func() (interface{}, error) {
+	w := newWorker(func() (interface{}, error) {
 		return nil, nil
 	})
-	work := func(*Worker) (interface{}, error) {
+	work := func(interface{}) (interface{}, error) {
 		e0 := errors.New("err")
 		return nil, e0
 	}
@@ -70,11 +70,11 @@ func TestSpawnWorkerNotInitiated(t *testing.T) {
 
 }
 func TestSpawnWorkerWithError(t *testing.T) {
-	w := NewWorker(func() (interface{}, error) {
+	w := newWorker(func() (interface{}, error) {
 		return nil, nil
 	})
 	w.init()
-	work := func(*Worker) (interface{}, error) {
+	work := func(interface{}) (interface{}, error) {
 		e0 := errors.New("err")
 		return nil, e0
 	}
@@ -92,11 +92,11 @@ func TestSpawnWorkerWithError(t *testing.T) {
 }
 
 func TestSpawnWorkerWithPanic(t *testing.T) {
-	w := NewWorker(func() (interface{}, error) {
+	w := newWorker(func() (interface{}, error) {
 		return nil, nil
 	})
 	w.init()
-	work := func(*Worker) (interface{}, error) {
+	work := func(interface{}) (interface{}, error) {
 		panic("panic")
 	}
 

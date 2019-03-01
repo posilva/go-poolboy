@@ -9,7 +9,7 @@ import (
 // Pool defines the data to manage a pool of workers
 type Pool struct {
 	size      int
-	available chan *Worker
+	available chan *worker
 	initiated bool
 }
 
@@ -17,7 +17,7 @@ type Pool struct {
 func NewPool(sz int) *Pool {
 	pool := &Pool{
 		size:      sz,
-		available: make(chan *Worker, sz),
+		available: make(chan *worker, sz),
 		initiated: false,
 	}
 	return pool
@@ -36,7 +36,7 @@ func NewPoolWithInit(fn InitFun, sz int) (*Pool, error) {
 // Init the pool of workers
 func (p *Pool) Init(fn InitFun) error {
 	for index := 0; index < p.size; index++ {
-		w := NewWorker(fn)
+		w := newWorker(fn)
 		err := w.init()
 		if err != nil {
 			return err
@@ -47,7 +47,7 @@ func (p *Pool) Init(fn InitFun) error {
 }
 
 // Checkout recruits a worker to do a task
-func (p *Pool) checkout(ctx context.Context) (*Worker, error) {
+func (p *Pool) checkout(ctx context.Context) (*worker, error) {
 	select {
 	case w := <-p.available:
 		return w, nil
@@ -57,7 +57,7 @@ func (p *Pool) checkout(ctx context.Context) (*Worker, error) {
 }
 
 // Checkin releases the worker back to pool
-func (p *Pool) checkin(w *Worker) {
+func (p *Pool) checkin(w *worker) {
 	p.available <- w
 }
 
