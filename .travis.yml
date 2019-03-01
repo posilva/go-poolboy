@@ -1,0 +1,37 @@
+# This is a weird way of telling Travis to use the fast container-based test
+# runner instead of the slow VM-based runner.
+sudo: false
+
+language: go
+
+# Force-enable Go modules. This will be unnecessary when Go 1.12 lands.
+env:
+  - GO111MODULE=on
+
+# You don't need to test on very old version of the Go compiler. It's the user's
+# responsibility to keep their compilers up to date.
+go:
+  - 1.11.x
+
+# Only clone the most recent commit.
+git:
+  depth: 1
+
+notifications:
+  email: true
+
+matrix:
+  allow_failures:
+    - go: master
+  fast_finish: true
+
+script:
+  - go get -t -v ./...
+  - go vet ./...                                                # go vet is the official Go static analyzer
+  - diff -u <(echo -n) <(gofmt -d -s .)
+  - go test -race -coverprofile=coverage.txt -covermode=atomic  # Run all the tests with the race detector enabled
+  
+
+# push results to CodeCov
+after_success:
+  - bash <(curl -s https://codecov.io/bash)
