@@ -29,7 +29,7 @@ func main() {
 		panic(fmt.Errorf("failed to create the pool: %v", err))
 	}
 	defer pool.Cancel()
-	result, err := pool.Execute(func(s interface{}) (interface{}, error) {
+	result, err := pool.ExecuteWithTimeout(func(s interface{}) (interface{}, error) {
 		// get the state
 		state := s.(string)
 		// do something with state and return

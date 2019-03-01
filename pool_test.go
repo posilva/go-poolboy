@@ -55,7 +55,7 @@ func TestPoolSimple(t *testing.T) {
 			defer wg.Done()
 			r, e := p.Execute(func(interface{}) (interface{}, error) {
 				return "ok", nil
-			}, 5000)
+			})
 			assert.Nil(t, e, "no error should be returned")
 			assert.Equal(t, r, "ok", "result should be equal")
 		}()
@@ -75,7 +75,7 @@ func TestPoolMoreWorkThanWorkers(t *testing.T) {
 	for index := 0; index < 10; index++ {
 		go func() {
 			defer wg.Done()
-			r, e := p.Execute(func(interface{}) (interface{}, error) {
+			r, e := p.ExecuteWithTimeout(func(interface{}) (interface{}, error) {
 				return "ok", nil
 			}, 5000)
 			assert.Nil(t, e, "no error should be returned")
@@ -97,7 +97,7 @@ func TestPoolMoreWorkThanWorkersWithTimeouts(t *testing.T) {
 	for index := 0; index < 5; index++ {
 		go func() {
 			defer wg.Done()
-			r, e := p.Execute(func(interface{}) (interface{}, error) {
+			r, e := p.ExecuteWithTimeout(func(interface{}) (interface{}, error) {
 				time.Sleep(2 * time.Second)
 				return "ok", nil
 			}, 1000)

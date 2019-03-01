@@ -65,8 +65,8 @@ func (p *Pool) checkin(w *worker) {
 	}
 }
 
-// Execute encapsulates a Checkout, Do, CheckIn
-func (p *Pool) Execute(fn WorkFun, timeout uint64) (interface{}, error) {
+// ExecuteWithTimeout executes a work function with a timeout in milliseconds
+func (p *Pool) ExecuteWithTimeout(fn WorkFun, timeout uint64) (interface{}, error) {
 	t := time.Duration(math.MaxInt64)
 	if timeout > 0 {
 		t = time.Duration(timeout) * time.Millisecond
@@ -79,6 +79,11 @@ func (p *Pool) Execute(fn WorkFun, timeout uint64) (interface{}, error) {
 	}
 	defer p.checkin(w)
 	return w.do(ctx, fn)
+}
+
+// Execute executes a work function with no timeout
+func (p *Pool) Execute(fn WorkFun) (interface{}, error) {
+	return p.ExecuteWithTimeout(fn, 0)
 }
 
 // Cancel the workers in the pool
